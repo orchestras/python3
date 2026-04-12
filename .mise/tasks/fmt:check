@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Check formatting without writing (Ruff)"
-set -euo pipefail
-ruff format --check src/ tests/

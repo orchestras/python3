@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Format the source code with Ruff"
-set -euo pipefail
-ruff format src/ tests/

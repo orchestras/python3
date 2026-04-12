@@ -1,45 +1,29 @@
 #!/usr/bin/env bash
-# mise description="Install mise shell completions (detects bash/zsh/fish)"
+#MISE description="Install mise shell completions (detects bash/zsh/fish)"
 set -euo pipefail
 
 CURRENT_SHELL=$(basename "${SHELL:-/bin/bash}")
 echo "Detected shell: ${CURRENT_SHELL}"
-echo ""
-
-install_bash() {
-  local default="$HOME/.local/share/bash-completion/completions/mise"
-  read -rp "Bash completion path [${default}]: " dest
-  dest="${dest:-${default}}"
-  mkdir -p "$(dirname "${dest}")"
-  mise completion bash > "${dest}"
-  echo "  ✓ Bash completions → ${dest}"
-}
-
-install_zsh() {
-  local default="$HOME/.zsh/completions/_mise"
-  read -rp "Zsh completion path [${default}]: " dest
-  dest="${dest:-${default}}"
-  mkdir -p "$(dirname "${dest}")"
-  mise completion zsh > "${dest}"
-  echo "  ✓ Zsh completions → ${dest}"
-  echo "  Add to .zshrc: fpath=($(dirname "${dest}") \$fpath)"
-}
-
-install_fish() {
-  local default="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions/mise.fish"
-  read -rp "Fish completion path [${default}]: " dest
-  dest="${dest:-${default}}"
-  mkdir -p "$(dirname "${dest}")"
-  mise completion fish > "${dest}"
-  echo "  ✓ Fish completions → ${dest}"
-}
 
 case "${CURRENT_SHELL}" in
-  fish) install_fish ;;
-  zsh)  install_zsh ;;
-  *)    install_bash ;;
+  fish)
+    dest="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions/mise.fish"
+    mkdir -p "$(dirname "${dest}")"
+    mise completion fish > "${dest}"
+    echo "✓ Fish completions → ${dest}"
+    ;;
+  zsh)
+    dest="$HOME/.zsh/completions/_mise"
+    mkdir -p "$(dirname "${dest}")"
+    mise completion zsh > "${dest}"
+    echo "✓ Zsh completions → ${dest}"
+    ;;
+  *)
+    dest="$HOME/.local/share/bash-completion/completions/mise"
+    mkdir -p "$(dirname "${dest}")"
+    mise completion bash > "${dest}"
+    echo "✓ Bash completions → ${dest}"
+    ;;
 esac
 
-echo ""
-echo "✓ Restart your shell to activate completions."
-echo "  All mise tasks are tab-completable: mise run <TAB>"
+echo "Restart your shell to activate completions."

@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Show version tags on the remote"
-set -euo pipefail
-echo "Remote tags:"
-git ls-remote --tags origin 'refs/tags/v*' 2>/dev/null \
-  | sed 's|.*refs/tags/||' \
-  | grep -v '\^{}' \
-  | sort -rV

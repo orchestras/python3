@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# mise description="Install project dependencies with UV"
+#MISE description="Install project dependencies with UV"
 set -euo pipefail
 uv sync --all-extras
 echo "✓ Dependencies installed"
-echo "  Activate venv: source .venv/bin/activate"
-echo "  Or use: mise run <task>"

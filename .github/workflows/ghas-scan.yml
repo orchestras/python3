@@ -3,10 +3,11 @@ name: GHAS Security Scan
 on:
   workflow_dispatch:
   schedule:
-    # Run every Monday at 06:00 UTC
     - cron: "0 6 * * 1"
   push:
     branches: [main, develop]
+  pull_request:
+    branches: [develop, main]
 
 permissions:
   actions: read
@@ -44,7 +45,6 @@ jobs:
     name: Dependency Review
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4

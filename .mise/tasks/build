@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mise description="Sync src/python_template/version.py from pyproject.toml"
+#MISE description="Sync src/python_template/version.py from pyproject.toml"
 set -euo pipefail
 
 version=$(python -c "

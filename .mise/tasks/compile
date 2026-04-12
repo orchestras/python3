@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# mise description="Compile cross-platform binaries with PyInstaller to ./bin/"
+#MISE description="Compile a one-file binary with PyInstaller to ./bin/"
 set -euo pipefail
 
 if ! python -c "import PyInstaller" &>/dev/null; then
-  echo "PyInstaller not installed. Run: uv sync --extra dev"
+  echo "PyInstaller not installed. Run: mise run install"
   exit 1
 fi
 
@@ -21,21 +21,24 @@ print(data['project']['name'])
 
 mkdir -p bin
 
-echo "Building standalone binary for $(uname -s)/$(uname -m)..."
+platform=$(python -c "
+import platform
+s = platform.system().lower()
+m = platform.machine().lower()
+m = 'amd64' if m in ('x86_64', 'amd64') else ('arm64' if m in ('arm64', 'aarch64') else m)
+print(f'{s}-{m}')
+")
 
+echo "Building standalone binary for ${platform}..."
 pyinstaller \
   --onefile \
   --clean \
-  --name "${name}" \
+  --name "${name}-${platform}" \
   --distpath bin \
   --workpath build/pyinstaller \
   --specpath build \
   src/python_template/__main__.py
 
 echo ""
-echo "✓ Binary compiled: bin/${name}"
+echo "✓ Binary compiled: bin/${name}-${platform}"
 echo "  Version: ${version}"
-echo "  Platform: $(uname -s)-$(uname -m)"
-echo ""
-echo "Note: For cross-platform builds, use the CI release workflow."
-echo "  Each platform must build natively (Linux → Linux, macOS → macOS, etc.)"

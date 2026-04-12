@@ -1,8 +1,8 @@
 name: Build and Release Python Binaries
 
-# Triggered by a new v* tag (created by bump.yml or manually).
-# Builds native binaries with PyInstaller on each platform in parallel,
-# then creates a GitHub Release with all artifacts and checksums.
+# Triggered by a new v* tag.
+# Builds native PyInstaller binaries per platform, then creates a GitHub Release.
+# NOTE: Python cannot truly cross-compile — each platform must build natively.
 
 on:
   push:
@@ -22,9 +22,6 @@ jobs:
         include:
           - os: ubuntu-latest
             suffix: linux-amd64
-            ext: ""
-          - os: ubuntu-latest-arm
-            suffix: linux-arm64
             ext: ""
           - os: macos-latest
             suffix: darwin-arm64
@@ -46,30 +43,29 @@ jobs:
           experimental: true
 
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: uv sync
 
-      - name: Get project name and version
+      - name: Get metadata
         id: meta
         shell: bash
         run: |
-          VERSION=$(python -c "
+          VERSION=$(uv run python -c "
           import tomllib, pathlib
           data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
           print(data['project']['version'])
           ")
-          NAME=$(python -c "
+          NAME=$(uv run python -c "
           import tomllib, pathlib
           data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
           print(data['project']['name'])
           ")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"
-          echo "binary=${NAME}-${{ matrix.suffix }}${{ matrix.ext }}" >> "$GITHUB_OUTPUT"
 
       - name: Build binary with PyInstaller
         shell: bash
         run: |
-          python -m PyInstaller \
+          uv run pyinstaller \
             --onefile \
             --clean \
             --name "${{ steps.meta.outputs.name }}-${{ matrix.suffix }}" \
@@ -97,9 +93,70 @@ jobs:
             bin/${{ steps.meta.outputs.name }}-${{ matrix.suffix }}${{ matrix.ext }}
             bin/${{ steps.meta.outputs.name }}-${{ matrix.suffix }}${{ matrix.ext }}.sha256
 
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    needs: []
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          experimental: true
+
+      - name: Get metadata
+        id: meta
+        run: |
+          VERSION=$(uv run python -c "
+          import tomllib, pathlib
+          data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
+          print(data['project']['version'])
+          ")
+          NAME=$(uv run python -c "
+          import tomllib, pathlib
+          data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
+          print(data['project']['name'])
+          ")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU (for multi-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.package
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            TAG=${{ steps.meta.outputs.version }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ steps.meta.outputs.name }}:${{ steps.meta.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/${{ steps.meta.outputs.name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   release:
     name: release
-    needs: build
+    needs: [build]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
 
@@ -113,28 +170,29 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Read release notes
-        id: notes
-        run: |
-          if [ -f CHANGELOG.md ]; then
-            # Extract the top-most changelog section
-            body=$(awk '/^## \[/{if(p)exit; p=1} p' CHANGELOG.md | head -100)
-            echo "body<<EOF" >> "$GITHUB_OUTPUT"
-            echo "${body}" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-          else
-            echo "body=Release ${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Get project name
         id: meta
         run: |
-          NAME=$(python -c "
+          NAME=$(uv run python -c "
           import tomllib, pathlib
           data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
           print(data['project']['name'])
-          ")
+          " 2>/dev/null || echo "python-template")
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Read changelog excerpt
+        id: notes
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            body=$(awk '/^## \[/{if(p)exit; p=1} p' CHANGELOG.md | head -100)
+            {
+              echo "body<<EOF"
+              echo "${body}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "body=Release ${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -144,6 +202,5 @@ jobs:
           body: ${{ steps.notes.outputs.body }}
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
-          files: |
-            artifacts/**/*
+          files: artifacts/**/*
           generate_release_notes: true

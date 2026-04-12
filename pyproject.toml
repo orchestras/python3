@@ -23,15 +23,6 @@ classifiers = [
 ]
 dependencies = []
 
-[project.optional-dependencies]
-dev = [
-  "pytest>=8.3",
-  "pytest-cov>=6.0",
-  "pytest-xdist>=3.6",
-  "pytest-asyncio>=0.24",
-  "coverage[toml]>=7.6",
-  "pyinstaller>=6.11",
-]
 
 [project.scripts]
 python-template = "python_template.__main__:main"
@@ -52,7 +43,10 @@ include = ["src/", "tests/", "README.md", "LICENSE", "CHANGELOG.md"]
 # ─── UV ──────────────────────────────────────────────────────────────────────
 
 [tool.uv]
-dev-dependencies = [
+# uv uses dependency-groups for dev dependencies (PEP 735)
+
+[dependency-groups]
+dev = [
   "pytest>=8.3",
   "pytest-cov>=6.0",
   "pytest-xdist>=3.6",
@@ -106,10 +100,11 @@ ignore = [
   "D104",   # Missing docstring in public package
   "D203",   # 1 blank line required before class docstring (conflicts with D211)
   "D213",   # Multi-line docstring summary should start at the second line (conflicts with D212)
-  "TRY003", # Avoid specifying long messages outside the exception class
-  "S101",   # Use of assert detected (allow in tests)
-  "T201",   # Allow print statements in __main__ (CLI output)
+  "TRY003",  # Avoid specifying long messages outside the exception class
+  "S101",    # Use of assert detected (allow in tests)
+  "T201",    # Allow print statements in __main__ (CLI output)
   "PLC0415", # Allow imports inside functions (lazy imports for CLI startup)
+  "ANN401",  # Any is needed for **kwargs in abstract base classes
 ]
 
 [tool.ruff.lint.per-file-ignores]

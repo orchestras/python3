@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#MISE description="Release develop → main (linear rebase fast-forward) and push"
+set -euo pipefail
+
+current=$(git branch --show-current)
+git fetch origin
+
+git checkout main 2>/dev/null || git checkout -b main origin/main
+git pull origin main --rebase
+
+git checkout develop 2>/dev/null || git checkout -b develop origin/develop
+git pull origin develop --rebase
+
+git checkout main
+git merge --ff-only develop || {
+  echo "Fast-forward failed. Rebasing develop onto main..."
+  git checkout develop
+  git rebase main
+  git push origin develop --force-with-lease
+  git checkout main
+  git merge --ff-only develop
+}
+
+git push origin main
+echo "✓ Released develop → main"
+git checkout "${current}" 2>/dev/null || true

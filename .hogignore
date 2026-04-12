@@ -1,7 +1,0 @@
-# TruffleHog ignore patterns
-# https://github.com/trufflesecurity/trufflehog
-
-tests/
-*.md
-uv.lock
-.mise/.githooks-cache/

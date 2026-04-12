@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Lint and auto-fix the source code with Ruff"
-set -euo pipefail
-ruff check --fix src/ tests/

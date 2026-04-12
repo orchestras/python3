@@ -1,4 +1,4 @@
-"""Python 3 template package using UV, Ruff, Ty, pytest, and Mise."""
+"""Python 3 template package — UV · Ruff · Ty · pytest · Mise."""
 
 from python_template.version import __version__
 
