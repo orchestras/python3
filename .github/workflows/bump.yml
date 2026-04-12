@@ -1,0 +1,78 @@
+name: Tag & Release Version
+
+# Runs on push to main. Reads the version from pyproject.toml (set
+# locally by `mise run bump:patch/minor/major/prerel` and committed),
+# ensures version.py is in sync, and creates + pushes the git tag.
+# The tag push then triggers release.yml.
+#
+# Version authority is LOCAL — developers choose the version with
+# `mise run bump:*` and commit the result. CI only tags and releases.
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          experimental: true
+
+      - name: Install dependencies
+        run: mise run install
+
+      - name: Read version and sync version.py
+        id: ver
+        run: |
+          # Regenerate version.py from pyproject.toml (idempotent)
+          mise run build
+
+          VERSION=$(python -c "
+          import tomllib, pathlib
+          data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
+          print(data['project']['version'])
+          ")
+          echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version_plain=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Current version: v${VERSION}"
+
+          # Commit version.py if it changed
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if ! git diff --quiet src/python_template/version.py; then
+            git add src/python_template/version.py
+            git commit -m "chore: sync version.py to ${VERSION} [skip ci]"
+            git push origin main
+            echo "Committed version.py sync"
+          fi
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ steps.ver.outputs.version }}"
+
+          # Fetch to check remote tags
+          git fetch --tags origin
+
+          if git tag -l | grep -qx "${TAG}"; then
+            echo "Tag ${TAG} already exists — nothing to do."
+            exit 0
+          fi
+
+          git tag -a "${TAG}" -m "${TAG}"
+          git push origin "${TAG}"
+          echo "✓ Tagged and pushed ${TAG} → release.yml will fire"

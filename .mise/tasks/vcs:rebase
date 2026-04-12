@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# mise description="Rebase current branch onto develop (preferred over merge)"
+set -euo pipefail
+git fetch origin
+git rebase origin/develop
+echo "✓ Rebased onto origin/develop"

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# mise description="Type-check the source with ty (Astral)"
+set -euo pipefail
+
+if command -v ty &>/dev/null; then
+  ty check src/
+else
+  echo "⚠  ty not found — falling back to pyright (install ty via: uv tool install ty)"
+  if command -v pyright &>/dev/null; then
+    pyright src/
+  else
+    echo "ERROR: neither ty nor pyright found. Run: uv tool install ty"
+    exit 1
+  fi
+fi

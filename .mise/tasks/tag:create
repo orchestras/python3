@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# mise description="Create a git tag from current pyproject.toml version (does not push)"
+set -euo pipefail
+version=$(python -c "
+import tomllib, pathlib
+data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
+print(data['project']['version'])
+")
+tag="v${version}"
+
+if git tag -l | grep -qx "${tag}"; then
+  echo "Tag ${tag} already exists locally."
+  exit 0
+fi
+
+git tag -a "${tag}" -m "${tag}"
+echo "✓ Tag ${tag} created. Run 'mise run tag:push' to push."

@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# pre-push — runs on `git push`
+# Checks: test suite must pass, no pushing directly to main
+set -euo pipefail
+
+source "$(git rev-parse --show-toplevel)/scripts/colors.sh" 2>/dev/null || true
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+REMOTE="$1"
+REMOTE_URL="$2"
+
+echo -e "${CYAN:-}[pre-push]${ENDCOLOR:-} Running pre-push checks (remote: ${REMOTE})..."
+
+# Read stdin to get refs being pushed
+while IFS=' ' read -r local_ref local_sha remote_ref _remote_sha; do
+  # Block direct pushes to main
+  if [[ "$remote_ref" == "refs/heads/main" ]]; then
+    BRANCH=$(git branch --show-current)
+    if [[ "$BRANCH" == "main" ]]; then
+      echo -e "${RED:-}✗ Direct push to main is blocked.${ENDCOLOR:-}"
+      echo "  Workflow: bump version → push tag → CI releases via tag."
+      echo "  Use: mise run vcs:release (to release develop → main)"
+      exit 1
+    fi
+  fi
+done
+
+# Run tests before pushing
+if [ -d "tests" ]; then
+  echo -e "  ${BLUE:-}→ running tests...${ENDCOLOR:-}"
+  python -m pytest tests/ -q --tb=short || {
+    echo -e "${RED:-}✗ Tests failed. Fix before pushing.${ENDCOLOR:-}"
+    exit 1
+  }
+fi
+
+echo -e "${GREEN:-}✓ pre-push checks passed${ENDCOLOR:-}"

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# mise description="Configure local git repo (delta pager, GPG signing, rebase-only, hooks path)"
+set -euo pipefail
+
+# Delta pager for better diffs
+git config --local core.pager delta
+git config --local interactive.diffFilter 'delta --color-only'
+git config --local delta.navigate true
+git config --local delta.dark true
+git config --local delta.side-by-side true
+git config --local merge.conflictStyle zdiff3
+
+# GPG signing
+git config --local commit.gpgsign true
+git config --local tag.gpgSign true
+
+# Custom hooks path
+git config --local core.hooksPath config/githooks/hooks
+
+# Rebase-only workflow (never merge commits via pull)
+git config --local pull.rebase true
+git config --local merge.ff only
+git config --local rebase.autoStash true
+
+# Helpful aliases
+git config --local alias.lg "log --oneline --graph --decorate --all"
+git config --local alias.st "status -sb"
+git config --local alias.co "checkout"
+
+echo "✓ Local git config applied"
+echo "  - delta pager enabled"
+echo "  - GPG signing enabled (commit + tag)"
+echo "  - hooks path: config/githooks/hooks"
+echo "  - pull.rebase=true (rebase-only workflow)"

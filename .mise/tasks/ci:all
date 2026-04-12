@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# mise description="CI: run full pipeline (install → lint → fmt:check → typecheck → test:cov)"
+set -euo pipefail
+
+echo "=== CI Pipeline ==="
+echo ""
+
+echo "--- Installing dependencies ---"
+mise run install
+
+echo ""
+echo "--- Linting (ruff check) ---"
+mise run lint
+
+echo ""
+echo "--- Format check (ruff format --check) ---"
+mise run fmt:check
+
+echo ""
+echo "--- Type checking (ty) ---"
+mise run typecheck
+
+echo ""
+echo "--- Tests with coverage ---"
+mise run test:cov
+
+echo ""
+echo "✓ CI pipeline passed"

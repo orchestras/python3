@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# mise description="Push Docker image to configured registry"
+set -euo pipefail
+
+version=$(python -c "
+import tomllib, pathlib
+data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
+print(data['project']['version'])
+")
+
+repo="${DOCKER_REPO:-lynsei}"
+program="${DOCKER_PROGRAM:-orchestras}"
+name=$(python -c "
+import tomllib, pathlib
+data = tomllib.loads(pathlib.Path('pyproject.toml').read_text())
+print(data['project']['name'])
+")
+
+docker push "${repo}/${program}/${name}:${version}"
+echo "✓ Pushed ${repo}/${program}/${name}:${version}"

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# mise description="Apply branch protection rulesets to develop and main via GitHub API"
+set -euo pipefail
+
+if ! gh auth status &>/dev/null; then
+  echo "ERROR: gh CLI is not authenticated. Run: gh auth login"
+  exit 1
+fi
+
+REPO=$(gh repo view --json nameWithOwner -q '.nameWithOwner')
+echo "Repository: ${REPO}"
+
+# Ensure develop branch exists on remote
+if ! git ls-remote --heads origin develop | grep -q develop; then
+  echo "Creating develop branch from main..."
+  git checkout main && git pull origin main
+  git checkout -b develop && git push -u origin develop
+fi
+
+# Set develop as default branch
+gh api -X PATCH "repos/${REPO}" -f default_branch=develop --silent
+echo "✓ Default branch set to develop"
+
+# Create/update the required-status-checks ruleset
+# The 'context' values must match the job names in your workflow YAML exactly.
+gh api -X POST "repos/${REPO}/rulesets" --input - <<'RULES' || echo "Ruleset may already exist — check GitHub repo settings."
+{
+  "name": "Protect develop and main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/main", "refs/heads/develop"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "require_last_push_approval": false,
+        "require_code_owner_review": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          { "context": "pr-check / lint" },
+          { "context": "pr-check / typecheck" },
+          { "context": "pr-check / test" },
+          { "context": "pr-check / security" }
+        ]
+      }
+    },
+    { "type": "non_fast_forward" },
+    { "type": "deletion" }
+  ]
+}
+RULES
+
+echo "✓ Branch protection ruleset applied to develop and main"
+echo ""
+echo "NOTE: For 'required_status_checks' to work in GitHub UI, the check names"
+echo "above must exactly match the 'name' field of jobs in your workflow YAML."
+echo "Current expected checks:"
+echo "  - pr-check / lint"
+echo "  - pr-check / typecheck"
+echo "  - pr-check / test"
+echo "  - pr-check / security"
