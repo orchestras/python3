@@ -91,8 +91,9 @@ mise run tag:push             # push tags → triggers release workflow
 
 ```bash
 mise run git:config           # configure delta, GPG, rebase-only, hooks path
-mise run vcs:rebase           # rebase current branch onto origin/develop
-mise run vcs:release          # fast-forward develop → main
+mise run vcs:rebase           # rebase feature branch onto origin/develop
+mise run vcs:integrate        # forward-integrate feature → develop (rebase + force push)
+mise run vcs:release          # release develop → main (rebase + force push)
 mise run vcs:protect          # apply branch protection rulesets via GitHub API
 ```
 
@@ -157,10 +158,41 @@ mise run compile              # PyInstaller one-file binary for current platform
 feature/xyz → develop → main → tag → release
 ```
 
-- Feature branches are **rebased** onto `develop` (never merged)
-- `develop` → `main` uses `mise run vcs:release` (fast-forward only)
-- Pushing a `v*` tag to `main` triggers the release workflow
-- Direct pushes to `main` are blocked by the pre-push hook and branch ruleset
+**No merge commits anywhere.** Every integration is a rebase.
+
+### Keep your feature branch current
+
+```bash
+# On your feature branch:
+mise run vcs:rebase
+# → git pull --rebase origin develop
+```
+
+### Integrate a feature branch into develop
+
+```bash
+mise run vcs:integrate feat/my-feature
+# 1. Rebase feature onto origin/develop
+# 2. git checkout develop && git pull
+# 3. git rebase feat/my-feature
+# 4. git push --force-with-lease origin develop
+```
+
+### Release develop → main
+
+```bash
+mise run vcs:release
+# 1. git checkout main
+# 2. git rebase origin/develop
+# 3. git push --force-with-lease origin main
+```
+
+Then bump and tag:
+
+```bash
+mise run bump:patch   # (or :minor / :major)
+mise run tag:push     # triggers binary + Docker release CI
+```
 
 ---
 

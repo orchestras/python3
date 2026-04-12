@@ -84,12 +84,39 @@ For namespaced tasks (e.g. `foo:bar`), create `.mise/tasks/foo:bar`.
 - GHAS (CodeQL) runs weekly and on every push to main/develop
 - Bandit runs on every PR as part of the security check
 
-## Release Process
+## Git Workflow (rebase-only — no merge commits)
 
-1. Make changes on a feature branch
-2. `git rebase origin/develop` (or `mise run vcs:rebase`)
-3. Open PR targeting `develop` — required checks must pass
-4. Merge to `develop` (linear/rebase only)
-5. When ready to release: `mise run vcs:release` (develop → main)
-6. On main: `mise run bump:patch` (or minor/major) → `mise run tag:push`
-7. CI automatically builds PyInstaller binaries for all platforms and creates a GitHub Release
+### Keeping a feature branch current
+
+```bash
+# From your feature branch:
+mise run vcs:rebase
+# Runs: git pull --rebase origin develop
+```
+
+### Integrating a feature branch into develop
+
+```bash
+mise run vcs:integrate feat/my-feature
+# 1. git checkout feat/my-feature
+# 2. git pull --rebase origin develop      (ensure feature is current)
+# 3. git checkout develop && git pull      (ensure develop is current)
+# 4. git rebase feat/my-feature            (fast-forward develop onto feature)
+# 5. git push --force-with-lease origin develop
+```
+
+### Releasing develop → main
+
+```bash
+mise run vcs:release
+# 1. git checkout main
+# 2. git rebase origin/develop
+# 3. git push --force-with-lease origin main
+```
+
+### Tagging and triggering a release
+
+```bash
+mise run bump:patch   # (or :minor / :major) — updates pyproject.toml, version.py, commits, tags
+mise run tag:push     # pushes tag → triggers binary + Docker release workflow
+```

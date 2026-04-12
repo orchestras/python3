@@ -46,18 +46,26 @@ git checkout develop
 git pull origin develop
 git checkout -b feat/my-feature
 
-# Make your changes...
-mise run ci:all   # full pipeline (must pass before committing)
+# Make your changes, then run the full pipeline before committing
+mise run ci:all
 
 # Commit with Conventional Commits format
 git add .
 git commit -m "feat: add my new feature"
 
-# Keep up to date with develop (rebase, never merge)
-mise run vcs:rebase
-
-# Push
+# Push your feature branch
 git push -u origin feat/my-feature
+```
+
+### Keeping your feature branch current
+
+If `develop` has moved on while you were working, rebase your branch onto it:
+
+```bash
+# From your feature branch:
+mise run vcs:rebase
+# This runs: git pull --rebase origin develop
+# and commits any autoStash residue with a chore label.
 ```
 
 ### Opening a PR
@@ -133,13 +141,42 @@ The `commit-msg` hook enforces this format.
 
 ## Releasing
 
-Releases are managed by the maintainers:
+Releases are managed by the maintainers using a strict rebase-only flow — no merge commits anywhere.
 
-1. Changes accumulate on `develop`
-2. When ready: `mise run vcs:release` (rebases develop into main)
-3. On main: `mise run bump:patch/minor/major` → commits version bump + creates tag
-4. `mise run tag:push` → triggers the release workflow
-5. CI builds PyInstaller binaries for all platforms and creates a GitHub Release
+### 1. Integrate a feature branch into develop
+
+```bash
+# From your feature branch (or pass the name explicitly):
+mise run vcs:integrate feat/my-feature
+
+# What it does:
+#   git checkout feat/my-feature
+#   git pull --rebase origin develop          # ensure feature is current
+#   git checkout develop
+#   git pull origin develop                   # ensure local develop is current
+#   git rebase feat/my-feature               # fast-forward develop onto feature tip
+#   git push --force-with-lease origin develop
+```
+
+### 2. Release develop → main
+
+```bash
+mise run vcs:release
+
+# What it does:
+#   git checkout main
+#   git rebase origin/develop
+#   git push --force-with-lease origin main
+```
+
+### 3. Bump version and push tag
+
+```bash
+mise run bump:patch    # (or :minor / :major)
+mise run tag:push      # pushes tag → triggers binary + Docker release workflow
+```
+
+CI then builds PyInstaller binaries for Linux/macOS/Windows and a multi-arch Docker image, then creates a GitHub Release.
 
 ## Security
 
